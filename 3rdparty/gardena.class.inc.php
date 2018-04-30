@@ -129,6 +129,25 @@ class gardena
         }
     }
 
+    /**
+    * Finds all occurrences of a certain category type.
+    * Example: You want to find all of your mowers, having one or more gardens. 
+    * 
+    * @param constant $category
+    */
+    function getDevicesOfCategory($category)
+    {
+        $categoryDevices = array();
+        foreach($this -> devices as $locationId => $devices)
+        {        
+            foreach($devices as $device)
+                if ($device -> category == $category)
+                    $categoryDevices[] =  $device;
+        }
+        return $categoryDevices;
+    }
+
+    
     function getDeviceById($id)
     {
         foreach($this -> devices as $locationId => $devices)

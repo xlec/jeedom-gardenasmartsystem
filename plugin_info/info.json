@@ -2,11 +2,11 @@
   "id" : "gardenasmartsystem",
   "name": "Gardena Smart System",
   "licence": "GPL",
+  "author": "Xavier Lecourtier",
   "require": "3.0",
-  "version": "1.0",
   "category": "devicecommunication",
+  "version": "1.0",
   "hasDependency": false,
   "hasOwnDaemon": false,
-  "maxDependancyInstallTime": 0,
-  "author": "Xavier Lecourtier"
+  "maxDependancyInstallTime": 0
 }
