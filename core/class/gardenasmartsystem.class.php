@@ -180,12 +180,11 @@ class gardenasmartsystemCmd extends cmd {
   public function execute($_options = array()) {
       if ( $this->getLogicalId() == 'command' && $_options['select'] != "" )
       {
-          log::add(__CLASS__,'info',"Commande execute ".$this->getLogicalId()." ".$_options['select']);
+          log::add(__CLASS__,'info',"Execute ".$this->getLogicalId()." ".$_options['select']);
           $gardena = gardenasmartsystem::getGardena();
           $eqLogic = $this->getEqLogic();
           $mower = $gardena->getDeviceById($eqLogic->getLogicalId());
           if (is_object($mower)) {
-            // ex: select = MOWER_PARK_UNTIL_FURTHER_NOTICE
             $cmdName=$_options['select'];
             log::add(__CLASS__,'debug',"Sending command ".$cmdName);
             $output = $gardena->sendCommand($mower, $gardena->$cmdName);
@@ -196,7 +195,6 @@ class gardenasmartsystemCmd extends cmd {
   public function formatValueWidget($_value) {
 	  if($this->getLogicalId()=='status') {
           $displayStatus=self::convertState($_value);
-          log::add(__CLASS__,'debug',"Format Status value : $_value ==> $displayStatus ");
           return $displayStatus;
       } else 
 		  return $_value;
