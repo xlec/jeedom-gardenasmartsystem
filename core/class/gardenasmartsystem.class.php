@@ -168,10 +168,15 @@ class gardenasmartsystem extends eqLogic {
               "batteryLevel" => array(__('Batterie', __FILE__), 'info', 'numeric', "%", 0, "GENERIC_INFO", '', 'badge', '',1),
               "soilHumidity" => array(__('Humidité', __FILE__), 'info', 'numeric', "%", 0, "GENERIC_INFO", '', 'badge', '',1),
               "temperature" => array(__('Temperature', __FILE__), 'info', 'numeric', "°C", 0, "GENERIC_INFO", '', 'badge', '',1),
-              "light" => array(__('Luminosité', __FILE__), 'info', 'numeric', "", 0, "GENERIC_INFO", '', 'badge', '',1)
-              
+              "light" => array(__('Luminosité', __FILE__), 'info', 'numeric', "lx", 0, "GENERIC_INFO", '', 'badge', '',1),
+              "command" => array(__('Commande', __FILE__), 'action', 'select', "", 0, "GENERIC_ACTION", '', '', 
+                'CMD_SENSOR_REFRESH_TEMPERATURE|'.__('Rafraichir Temperature',__FILE__).
+                ';CMD_SENSOR_REFRESH_LIGHT|'.__('Rafraichir Luminosité',__FILE__).
+                ';CMD_SENSOR_REFRESH_HUMIDITY|'.__('Rafraichir Humidité',__FILE__)
+			  ,1)
         );
     }
+
     
     /**************** Methods ****************/
     public static function cron() {
