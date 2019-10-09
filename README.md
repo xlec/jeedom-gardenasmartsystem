@@ -8,4 +8,5 @@ Plugin Jeedom permettant de gérer les équipements Gardena Smart System (tondeu
 
 Contributeurs
 ------------
-- `koleos6`_, gestion des sondes
+- [koleos6](https://github.com/koleos6), gestion des sondes
+
