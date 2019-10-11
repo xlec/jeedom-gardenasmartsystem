@@ -1,94 +1,156 @@
 <?php
-
 require_once dirname(__FILE__).'/../../../../core/php/core.inc.php';
 require_once dirname(__FILE__).'/../../3rdparty/gardena.class.inc.php';
 
+
 class gardenasmartsystem extends eqLogic {
-
-  /*************** Attributs ***************/
-  private static $_gardena = null;
-
-  /************* Static methods ************/
+    /*************** Attributs ***************/
+    private static $_gardena = null;
+    /************* Static methods ************/
 	public static function getGardena() {
-    $gardena = NULL;
-		$user = config::byKey('username',__CLASS__);
-		$password = config::byKey('password',__CLASS__);
-    if ( !empty($user) && !empty($password)){
-      log::add(__CLASS__, 'info', "Collecting data from Gardena servers...");
-      $gardena = new gardena($user, $password);
-      log::add(__CLASS__, 'info', "Collecting data from Gardena servers. Done");
-    } else {
-      log::add(__CLASS__, 'warning', "Configuration incomplete, cannot retrieve information from server");
-    }
+        $gardena = NULL;
+            $user = config::byKey('username',__CLASS__);
+            $password = config::byKey('password',__CLASS__);
+        if ( !empty($user) && !empty($password)){
+            log::add(__CLASS__, 'info', "Collecting data from Gardena servers...");
+            $gardena = new gardena($user, $password);
+            log::add(__CLASS__, 'info', "Collecting data from Gardena servers. Done");
+        } else {
+            log::add(__CLASS__, 'warning', "Configuration incomplete, cannot retrieve information from server");
+        }
 		return $gardena;
 	}
-
-  public static function postSave() {
-	  gardenasmartsystem::detectMower();
-  }
+    
+    
+    public static function postSave() {
+        gardenasmartsystem::detectMower();
+        gardenasmartsystem::detectSensor();
+    }
 	
 	public static function detectMower() {
 		log::add(__CLASS__, 'debug', "detectMower");
 		$gardena = self::getGardena();
     
-    if (!is_object($gardena))
-      return;
+        if (!is_object($gardena))
+            return;
     
-    foreach ($gardena->getDevicesOfCategory(gardena::CATEGORY_MOWER) as $mower) {
-       log::add(__CLASS__, 'debug', "Checking mower ". $mower->name);
-
-      $eqLogic = gardenasmartsystem::byLogicalId($mower->id, __CLASS__);
-      // Create or update equipment
-      if (!is_object($eqLogic)) {
-          log::add(__CLASS__, 'debug', "Found a new mower named [{$mower->name}]");
-          $eqLogic = new self();
-          $eqLogic->setLogicalId($mower->id);
-          $eqLogic->setName($mower->name);
-          $eqLogic->setConfiguration('category',gardena::CATEGORY_MOWER);
-          $eqLogic->setEqType_name(__CLASS__);
-          $eqLogic->setIsVisible(1);
-          $eqLogic->setIsEnable(1);
-          $eqLogic->save();
-      }
+        foreach ($gardena->getDevicesOfCategory(gardena::CATEGORY_MOWER) as $mower) {
+            log::add(__CLASS__, 'debug', "Checking mower ". $mower->name);
+            $eqLogic = gardenasmartsystem::byLogicalId($mower->id, __CLASS__);
+            // Create or update equipment
+            if (!is_object($eqLogic)) {
+                log::add(__CLASS__, 'debug', "Found a new mower named [{$mower->name}]");
+                $eqLogic = new self();
+                $eqLogic->setLogicalId($mower->id);
+                $eqLogic->setName($mower->name);
+                $eqLogic->setConfiguration('category',gardena::CATEGORY_MOWER);
+                $eqLogic->setEqType_name(__CLASS__);
+                $eqLogic->setIsVisible(1);
+                $eqLogic->setIsEnable(1);
+                $eqLogic->save();
+            }
       
-      log::add(__CLASS__, 'debug', "Checking mower commands for ". $mower->name);
-      foreach( $eqLogic->getDefaultCommands() as $id => $data){
-            log::add(__CLASS__, 'debug', "Checking mower command " . $id . " for " . $mower->name);
-            list($name, $type, $subtype, $unit, $invertBinary, $generic_type, $template_dashboard, $template_mobile, $listValue, $visible) = $data;
-            $cmd = $eqLogic->getCmd(null, $id);
-            if ( ! is_object($cmd) ) {
-                $cmd = new gardenasmartsystemCmd();
-                $cmd->setName($name);
-                $cmd->setEqLogic_id($eqLogic->getId());
-                $cmd->setType($type);
-                $cmd->setSubType($subtype);
-                $cmd->setLogicalId($id);
-                if ( !empty($listValue) )
-                {
-                    $cmd->setConfiguration('listValue', $listValue);
+            log::add(__CLASS__, 'debug', "Checking mower commands for ". $mower->name);
+            foreach( $eqLogic->getDefaultMowerCommands() as $id => $data){
+                log::add(__CLASS__, 'debug', "Checking mower command " . $id . " for " . $mower->name);
+                list($name, $type, $subtype, $unit, $invertBinary, $generic_type, $template_dashboard, $template_mobile, $listValue, $visible) = $data;
+                $cmd = $eqLogic->getCmd(null, $id);
+                if ( ! is_object($cmd) ) {
+                    $cmd = new gardenasmartsystemCmd();
+                    $cmd->setName($name);
+                    $cmd->setEqLogic_id($eqLogic->getId());
+                    $cmd->setType($type);
+                    $cmd->setSubType($subtype);
+                    $cmd->setLogicalId($id);
+                    if ( !empty($listValue) )
+                    {
+                        $cmd->setConfiguration('listValue', $listValue);
+                    }
+                    $cmd->setUnite($unit);
+                    $cmd->setDisplay('invertBinary',$invertBinary);
+                    $cmd->setDisplay('generic_type', $generic_type);
+                    $cmd->setTemplate('dashboard', $template_dashboard);
+                    $cmd->setTemplate('mobile', $template_mobile);
+                    $cmd->save();
                 }
-                $cmd->setDisplay('invertBinary',$invertBinary);
-                $cmd->setDisplay('generic_type', $generic_type);
-                $cmd->setTemplate('dashboard', $template_dashboard);
-                $cmd->setTemplate('mobile', $template_mobile);
-                $cmd->save();
-            }
-            else
-            {
-                if (empty($cmd->getType())) $cmd->setType($type);
-                if (empty($cmd->getSubType())) $cmd->setSubType($subtype);
-                if (empty($cmd->getDisplay('invertBinary'))) $cmd->setDisplay('invertBinary',$invertBinary);
-                if (empty($cmd->getDisplay('generic_type'))) $cmd->setDisplay('generic_type', $generic_type);
-                if (empty($cmd->getDisplay('dashboard'))) $cmd->setTemplate('dashboard', $template_dashboard);
-                if (empty($cmd->getDisplay('mobile'))) $cmd->setTemplate('mobile', $template_mobile);
-                if ( $listValue != "" ) $cmd->setConfiguration('listValue', $listValue);
-                $cmd->save();
-            }
-      }      
-    }
+                else
+                {
+                    if (empty($cmd->getType())) $cmd->setType($type);
+                    if (empty($cmd->getSubType())) $cmd->setSubType($subtype);
+                    if (empty($cmd->getDisplay('invertBinary'))) $cmd->setDisplay('invertBinary',$invertBinary);
+                    if (empty($cmd->getDisplay('generic_type'))) $cmd->setDisplay('generic_type', $generic_type);
+                    if (empty($cmd->getDisplay('dashboard'))) $cmd->setTemplate('dashboard', $template_dashboard);
+                    if (empty($cmd->getDisplay('mobile'))) $cmd->setTemplate('mobile', $template_mobile);
+                    if ( $listValue != "" ) $cmd->setConfiguration('listValue', $listValue);
+                    $cmd->save();
+                }
+            }      
+        }
 	}
-  
-  private function getDefaultCommands() {
+ 
+    public static function detectSensor() {
+		log::add(__CLASS__, 'debug', "detectSensor");
+		$gardena = self::getGardena();
+    
+        if (!is_object($gardena))
+          return;
+        
+        foreach ($gardena->getDevicesOfCategory(gardena::CATEGORY_SENSOR) as $sensor) {
+            log::add(__CLASS__, 'debug', "Checking sensor ". $sensor->name);
+
+            $eqLogic = gardenasmartsystem::byLogicalId($sensor->id, __CLASS__);
+            // Create or update equipment
+            if (!is_object($eqLogic)) {
+                log::add(__CLASS__, 'debug', "Found a new sensor named [{$sensor->name}]");
+                $eqLogic = new self();
+                $eqLogic->setLogicalId($sensor->id);
+                $eqLogic->setName($sensor->name);
+                $eqLogic->setConfiguration('category',gardena::CATEGORY_SENSOR);
+                $eqLogic->setEqType_name(__CLASS__);
+                $eqLogic->setIsVisible(1);
+                $eqLogic->setIsEnable(1);
+                $eqLogic->save();
+            }
+          
+            log::add(__CLASS__, 'debug', "Checking sensor commands for ". $sensor->name);
+            foreach( $eqLogic->getDefaultSensorCommands() as $id => $data){
+                log::add(__CLASS__, 'debug', "Checking sensor command " . $id . " for " . $sensor->name);
+                list($name, $type, $subtype, $unit, $invertBinary, $generic_type, $template_dashboard, $template_mobile, $listValue, $visible) = $data;
+                $cmd = $eqLogic->getCmd(null, $id);
+                if ( ! is_object($cmd) ) {
+                    $cmd = new gardenasmartsystemCmd();
+                    $cmd->setName($name);
+                    $cmd->setEqLogic_id($eqLogic->getId());
+                    $cmd->setType($type);
+                    $cmd->setSubType($subtype);
+                    $cmd->setLogicalId($id);
+                    if ( !empty($listValue) )
+                    {
+                        $cmd->setConfiguration('listValue', $listValue);
+                    }
+                    $cmd->setUnite($unit);
+                    $cmd->setDisplay('invertBinary',$invertBinary);
+                    $cmd->setDisplay('generic_type', $generic_type);
+                    $cmd->setTemplate('dashboard', $template_dashboard);
+                    $cmd->setTemplate('mobile', $template_mobile);
+                    $cmd->save();
+                }
+                else
+                {
+                    if (empty($cmd->getType())) $cmd->setType($type);
+                    if (empty($cmd->getSubType())) $cmd->setSubType($subtype);
+                    if (empty($cmd->getDisplay('invertBinary'))) $cmd->setDisplay('invertBinary',$invertBinary);
+                    if (empty($cmd->getDisplay('generic_type'))) $cmd->setDisplay('generic_type', $generic_type);
+                    if (empty($cmd->getDisplay('dashboard'))) $cmd->setTemplate('dashboard', $template_dashboard);
+                    if (empty($cmd->getDisplay('mobile'))) $cmd->setTemplate('mobile', $template_mobile);
+                    if ( $listValue != "" ) $cmd->setConfiguration('listValue', $listValue);
+                    $cmd->save();
+                }
+            }      
+        }
+    }
+
+    private function getDefaultMowerCommands() {
         return array(   
               "batteryLevel" => array(__('Batterie', __FILE__), 'info', 'numeric', "%", 0, "GENERIC_INFO", '', 'badge', '',1),
               "status" => array(__('Etat', __FILE__), 'info', 'string', "", 0, "GENERIC_INFO", 'badge', 'badge', '',1),
@@ -99,48 +161,96 @@ class gardenasmartsystem extends eqLogic {
                 ';CMD_MOWER_START_24HOURS|'.__('Démarrer pendant 24h',__FILE__)
 			  ,1)
         );
-  }
+    }
 	
-  /**************** Methods ****************/
-  public static function cron() {
-      //log::add(__CLASS__, 'debug', "cron");
-      gardenasmartsystem::updateMowers();
-  }
+    private function getDefaultSensorCommands() {
+        return array(   
+              "batteryLevel" => array(__('Batterie', __FILE__), 'info', 'numeric', "%", 0, "GENERIC_INFO", '', 'badge', '',1),
+              "soilHumidity" => array(__('Humidité', __FILE__), 'info', 'numeric', "%", 0, "GENERIC_INFO", '', 'badge', '',1),
+              "temperature" => array(__('Temperature', __FILE__), 'info', 'numeric', "°C", 0, "GENERIC_INFO", '', 'badge', '',1),
+              "light" => array(__('Luminosité', __FILE__), 'info', 'numeric', "lx", 0, "GENERIC_INFO", '', 'badge', '',1),
+              "command" => array(__('Commande', __FILE__), 'action', 'select', "", 0, "GENERIC_ACTION", '', '', 
+                'CMD_SENSOR_REFRESH_TEMPERATURE|'.__('Rafraichir Temperature',__FILE__).
+                ';CMD_SENSOR_REFRESH_LIGHT|'.__('Rafraichir Luminosité',__FILE__).
+                ';CMD_SENSOR_REFRESH_HUMIDITY|'.__('Rafraichir Humidité',__FILE__)
+			  ,1)
+        );
+    }
+
+    
+    /**************** Methods ****************/
+    public static function cron() {
+        //log::add(__CLASS__, 'debug', "cron");
+        gardenasmartsystem::updateMowers();
+        gardenasmartsystem::updateSensors();
+    }
   
-  public static function updateMowers() {
-	$equipments = eqLogic::byType(__CLASS__, true);
-	if (count($equipments) > 0) {
-		// Get last data from Gardena API
-		$gardena = self::getGardena();
-		foreach ( $equipments as $equipment) {
-			if ($equipment->getConfiguration('category')==gardena::CATEGORY_MOWER) {
-				$mower = $gardena->getDeviceById($equipment->getLogicalId());
-				if (is_object($mower)) {
-					// Get mower state
-					$status = $gardena->getMowerState($mower);
-					log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " mower state [$status]");
-					$equipment->checkAndUpdateCmd('status', $status);
+    public static function updateMowers() {
+        $equipments = eqLogic::byType(__CLASS__, true);
+        if (count($equipments) > 0) {
+            // Get last data from Gardena API
+            $gardena = self::getGardena();
+            foreach ( $equipments as $equipment) {
+                if ($equipment->getConfiguration('category')==gardena::CATEGORY_MOWER) {
+                    $mower = $gardena->getDeviceById($equipment->getLogicalId());
+                    if (is_object($mower)) {
+                        // Get mower state
+                        $status = $gardena->getMowerState($mower);
+                        log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " mower state [$status]");
+                        $equipment->checkAndUpdateCmd('status', $status);
           
-          // Battery Level
-          $batteryLevel =  $gardena->getPropertyData($mower, gardena::ABILITY_BATTERY, gardena::PROPERTY_BATTERYLEVEL)->value;
-					log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " battery level [$batteryLevel]%");
-					$equipment->checkAndUpdateCmd('batteryLevel', $batteryLevel);
+                        // Battery Level
+                        $batteryLevel =  $gardena->getPropertyData($mower, gardena::ABILITY_BATTERY, gardena::PROPERTY_BATTERYLEVEL)->value;
+                        log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " battery level [$batteryLevel]%");
+                        $equipment->checkAndUpdateCmd('batteryLevel', $batteryLevel);
           
-				}
+                    }
 				
-			}
-		  }
-	}
-  }
-
+                }
+            }
+        }
+    }
+  
+    public static function updateSensors() {
+        $equipments = eqLogic::byType(__CLASS__, true);
+        if (count($equipments) > 0) {
+            // Get last data from Gardena API
+            $gardena = self::getGardena();
+            foreach ( $equipments as $equipment) {
+                if ($equipment->getConfiguration('category')==gardena::CATEGORY_SENSOR) {
+                    $sensor = $gardena->getDeviceById($equipment->getLogicalId());
+                    if (is_object($sensor)) {
+                        
+                        // Battery Level
+                        $batteryLevel =  $gardena->getPropertyData($sensor, gardena::ABILITY_BATTERY, gardena::PROPERTY_BATTERYLEVEL)->value;
+                        log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " battery level [$batteryLevel]%");
+                        $equipment->checkAndUpdateCmd('batteryLevel', $batteryLevel);
+                        
+                        // Humidity Level
+                        $Hymidity =  $gardena->getPropertyData($sensor, gardena::ABILITY_SOIL_HUMIDITY, gardena::PROPERTY_SOIL_HUMIDITY)->value;
+                        log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " humidity [$Hymidity]%");
+                        $equipment->checkAndUpdateCmd('soilHumidity', $Hymidity);
+                        
+                        // Temperature
+                        $temperature =  $gardena->getPropertyData($sensor, gardena::ABILITY_TEMPERATURE, gardena::PROPERTY_TEMPERATURE)->value;
+                        log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " temperature [$temperature]%");
+                        $equipment->checkAndUpdateCmd('temperature', $temperature);
+                        
+                        // Light
+                        $light =  $gardena->getPropertyData($sensor, gardena::ABILITY_LIGHT, gardena::PROPERTY_LIGHTLEVEL)->value;
+                        log::add(__CLASS__, 'debug', "Updating " . $equipment->getName() . " light [$light]%");
+                        $equipment->checkAndUpdateCmd('light', $light);
+                    }
+                    
+                }
+            }
+        }
+    }
+  
   /********** Getters and setters **********/
-
 }
-
 class gardenasmartsystemCmd extends cmd {
-
   /*************** Attributs ***************/
-
   /************* Static methods ************/
   	public static function convertState($_state) {
         $state = $_state;
@@ -171,12 +281,12 @@ class gardenasmartsystemCmd extends cmd {
             case "unknown": $state = __("Statut inconnu", __FILE__); break;
             case "wait_power_up": $state = __("Mise sous tension, veuillez patienter", __FILE__); break;
             case "wait_updating": $state = __("Mise à jour, veuillez patienter", __FILE__); break;
+            default: $state = __("Pas programmé dans le plugin", __FILE__); break;
+
 		}
 		return $state;
 	}
-
   /**************** Methods ****************/
-
   public function execute($_options = array()) {
       if ( $this->getLogicalId() == 'command' && $_options['select'] != "" )
       {
@@ -199,7 +309,5 @@ class gardenasmartsystemCmd extends cmd {
       } else 
 		  return $_value;
   }
-
   /********** Getters and setters **********/
-
 }
