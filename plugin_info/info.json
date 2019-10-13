@@ -9,6 +9,6 @@
   "hasDependency": false,
   "hasOwnDaemon": false,
   "maxDependancyInstallTime": 0,
-  "changelog" : "https://xlec.github.io/jeedom-gardenasmartsystem/#language#/changelog",
+  "changelog" : "https://xlec.github.io/jeedom-gardenasmartsystem/#language#/changelog.html",
   "documentation" : "https://xlec.github.io/jeedom-gardenasmartsystem/#language#/"
 }
